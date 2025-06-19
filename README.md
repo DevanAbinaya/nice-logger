@@ -36,7 +36,7 @@ const app = new Elysia()
   .use(logger({
     mode: "live", // "live" or "combined" (default: "combined")
     withTimestamp: true, // optional (default: false)
-  }));
+  }))
   .get("/", "Hello via Elysia!")
   .listen(3000);
 ```
