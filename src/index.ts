@@ -5,151 +5,213 @@ import * as fmt from "./formatters";
 
 const REQUEST_START_TIME_KEY = "@tqman/nice-logger/request-start-time";
 
+type GlobalLogLevel = "info" | "debug" | "warn" | "error";
+type LogArgument = unknown;
+type TimestampOption = boolean | (() => string);
+
 export interface LoggerOptions {
-  /**
-   * Determine whether logging is enabled
-   *
-   * @default NODE_ENV !== 'production'
-   */
-  enabled?: boolean;
-  /**
-   * Determines the mode of the logger
-   *
-   * - 'live' - logs every request and response
-   * - 'combined' - logs request and response in a single line
-   *
-   * @default 'combined'
-   */
-  mode?: "combined" | "live";
-  /**
-   * Whether to print timestamp at the beginning of each line
-   * could be a function that returns a string
-   *
-   * @default false
-   */
-  withTimestamp?: boolean | (() => string);
-  /**
-   *  Whether to print banner at the beginning of each line
-   *
-   * @default false
-   */
-  withBanner?:
-    | boolean
-    | (() => void)
-    | Record<string, string | ((ctx: Elysia) => string | undefined)>;
+	enabled?: boolean;
+	mode?: "combined" | "live";
+	withTimestamp?: TimestampOption;
+	withBanner?:
+		| boolean
+		| (() => void)
+		| Record<string, string | ((ctx: Elysia) => string | undefined)>;
 }
 
-/**
- * A Nice and Simple logger plugin for Elysia
- */
+export interface GlobalLoggerOptions {
+	enabled?: boolean;
+	withTimestamp?: TimestampOption;
+	pretty?: boolean;
+}
+
+const defaultGlobalOptions: Required<GlobalLoggerOptions> = {
+	enabled: process.env.NODE_ENV !== "production",
+	withTimestamp: false,
+	pretty: false,
+};
+
+let globalLoggerOptions: Required<GlobalLoggerOptions> = {
+	...defaultGlobalOptions,
+};
+
+function resolveTimestamp(withTimestamp: TimestampOption): string {
+	const value =
+		typeof withTimestamp === "function"
+			? withTimestamp()
+			: new Date().toLocaleString();
+
+	return pc.dim(`[${value}]`);
+}
+
+function emitLine(
+	parts: Array<string | false | null | undefined>,
+	level: "log" | "warn" | "error" = "log",
+): void {
+	const line = parts.filter(Boolean).join(" ");
+
+	if (level === "error") {
+		console.error(line);
+		return;
+	}
+
+	if (level === "warn") {
+		console.warn(line);
+		return;
+	}
+
+	console.log(line);
+}
+
+function print(level: GlobalLogLevel, ...args: LogArgument[]): void {
+	if (!globalLoggerOptions.enabled) return;
+
+	const payload = fmt.formatValues(args, {
+		pretty: globalLoggerOptions.pretty,
+	});
+
+	emitLine(
+		[
+			globalLoggerOptions.withTimestamp
+				? resolveTimestamp(globalLoggerOptions.withTimestamp)
+				: "",
+			pc.bold(fmt.level(level)),
+			payload,
+		],
+		level === "error" ? "error" : level === "warn" ? "warn" : "log",
+	);
+}
+
+export function configureGlobalLogger(options: GlobalLoggerOptions = {}): void {
+	globalLoggerOptions = {
+		...globalLoggerOptions,
+		...options,
+	};
+}
+
+export function resetGlobalLoggerConfig(): void {
+	globalLoggerOptions = { ...defaultGlobalOptions };
+}
+
+export function getGlobalLoggerConfig(): Readonly<
+	Required<GlobalLoggerOptions>
+> {
+	return globalLoggerOptions;
+}
+
+export function info(...args: LogArgument[]): void {
+	print("info", ...args);
+}
+
+export function debug(...args: LogArgument[]): void {
+	print("debug", ...args);
+}
+
+export function warn(...args: LogArgument[]): void {
+	print("warn", ...args);
+}
+
+export function error(...args: LogArgument[]): void {
+	print("error", ...args);
+}
+
 export const logger = (options: LoggerOptions = {}) => {
-  const { enabled = process.env.NODE_ENV !== "production", mode = "combined" } =
-    options;
+	const { enabled = process.env.NODE_ENV !== "production", mode = "combined" } =
+		options;
 
-  const app = new Elysia({
-    name: "@tqman/nice-logger",
-    seed: options,
-  });
+	const app = new Elysia({
+		name: "@tqman/nice-logger",
+		seed: options,
+	});
 
-  if (!enabled) return app;
+	if (!enabled) return app;
 
-  const getTimestamp =
-    typeof options.withTimestamp === "function"
-      ? options.withTimestamp
-      : () => new Date().toLocaleString();
+	const ts = options.withTimestamp;
 
-  app
-    .onStart(ctx => {
-      if (!options.withBanner) {
-        return;
-      }
+	app
+		.onStart((ctx) => {
+			if (!options.withBanner) return;
 
-      if (typeof options.withBanner === "function") {
-        options.withBanner();
-        return;
-      }
+			if (typeof options.withBanner === "function") {
+				options.withBanner();
+				return;
+			}
 
-      const ELYSIA_VERSION = require("elysia/package.json").version;
-      console.log(`🦊 ${pc.green(`${pc.bold("Elysia")} v${ELYSIA_VERSION}`)}`);
+			const ELYSIA_VERSION = require("elysia/package.json").version;
+			emitLine([`🦊 ${pc.green(`${pc.bold("Elysia")} v${ELYSIA_VERSION}`)}`]);
 
-      if (typeof options.withBanner === "object") {
-        Object.entries(options.withBanner).forEach(([key, value]) => {
-          const v = typeof value === "function" ? value(ctx) : value;
+			if (typeof options.withBanner === "object") {
+				Object.entries(options.withBanner).forEach(([key, value]) => {
+					const v = typeof value === "function" ? value(ctx) : value;
+					if (!v) return;
+					emitLine([`${pc.green(" ➜ ")} ${pc.bold(key)}: ${pc.cyan(v)}`]);
+				});
 
-          if (v) {
-            console.log(`${pc.green(" ➜ ")} ${pc.bold(key)}: ${pc.cyan(v)}`);
-          }
-        });
+				emitLine([""]);
+				return;
+			}
 
-        // empty line
-        console.log();
-        return;
-      }
+			emitLine([
+				`${pc.green(" ➜ ")} ${pc.bold("Server")}: ${pc.cyan(String(ctx.server?.url))}\n`,
+			]);
+		})
+		.onRequest((ctx) => {
+			ctx.store = {
+				...ctx.store,
+				[REQUEST_START_TIME_KEY]: process.hrtime.bigint(),
+			};
 
-      console.log(
-        `${pc.green(" ➜ ")} ${pc.bold("Server")}: ${pc.cyan(String(ctx.server?.url))}\n`,
-      );
-    })
-    .onRequest(ctx => {
-      ctx.store = {
-        ...ctx.store,
-        [REQUEST_START_TIME_KEY]: process.hrtime.bigint(),
-      };
+			if (mode !== "live") return;
 
-      if (mode === "live") {
-        const url = new URL(ctx.request.url);
+			const url = new URL(ctx.request.url);
 
-        const components = [
-          options.withTimestamp ? pc.dim(`[${getTimestamp()}]`) : "",
-          pc.blue("--->"),
-          pc.bold(fmt.method(ctx.request.method)),
-          url.pathname,
-        ];
-        console.log(components.join(" "));
-      }
-    })
-    .onAfterResponse(({ request, set, response, store }) => {
-      if (response instanceof Error) {
-        return;
-      }
+			emitLine([
+				ts ? resolveTimestamp(ts) : "",
+				pc.blue("--->"),
+				pc.bold(fmt.method(ctx.request.method)),
+				url.pathname,
+			]);
+		})
+		.onAfterResponse(({ request, set, response, store }) => {
+			if (response instanceof Error) return;
 
-      const url = new URL(request.url);
-      const duration =
-        Number(
-          process.hrtime.bigint() - (store as any)[REQUEST_START_TIME_KEY],
-        ) / 1000;
+			const url = new URL(request.url);
+			const duration =
+				Number(
+					process.hrtime.bigint() - (store as any)[REQUEST_START_TIME_KEY],
+				) / 1000;
 
-      const sign = mode === "combined" ? pc.green("✓") : pc.green("<---");
-      const components = [
-        options.withTimestamp ? pc.dim(`[${getTimestamp()}]`) : "",
-        sign,
-        pc.bold(fmt.method(request.method)),
-        url.pathname,
-        fmt.status(set.status),
-        pc.dim(`[${fmt.duration(duration)}]`),
-      ];
-      console.log(components.join(" "));
-    })
-    .onError(({ request, error, store }) => {
-      const url = new URL(request.url);
-      const duration = (store as any)[REQUEST_START_TIME_KEY]
-        ? Number(
-            process.hrtime.bigint() - (store as any)[REQUEST_START_TIME_KEY],
-          ) / 1000
-        : null;
-      const status = "status" in error ? error.status : 500;
+			const sign = mode === "combined" ? pc.green("✓") : pc.green("<---");
 
-      const sign = mode === "combined" ? pc.red("✗") : pc.red("<-x-");
-      const components = [
-        options.withTimestamp ? pc.dim(`[${getTimestamp()}]`) : "",
-        sign,
-        pc.bold(fmt.method(request.method)),
-        url.pathname,
-        fmt.status(status),
-        pc.dim(`[${fmt.duration(duration)}]`),
-      ];
-      console.log(components.join(" "));
-    });
+			emitLine([
+				ts ? resolveTimestamp(ts) : "",
+				sign,
+				pc.bold(fmt.method(request.method)),
+				url.pathname,
+				fmt.status(set.status),
+				pc.dim(`[${fmt.duration(duration)}]`),
+			]);
+		})
+		.onError(({ request, error, store }) => {
+			const url = new URL(request.url);
+			const duration = (store as any)[REQUEST_START_TIME_KEY]
+				? Number(
+						process.hrtime.bigint() - (store as any)[REQUEST_START_TIME_KEY],
+					) / 1000
+				: null;
+			const status = "status" in error ? error.status : 500;
 
-  return app.as("plugin");
+			const sign = mode === "combined" ? pc.red("✗") : pc.red("<-x-");
+
+			emitLine([
+				ts ? resolveTimestamp(ts) : "",
+				sign,
+				pc.bold(fmt.method(request.method)),
+				url.pathname,
+				fmt.status(status),
+				pc.dim(`[${fmt.duration(duration)}]`),
+			]);
+		});
+
+	return app.as("plugin");
 };
