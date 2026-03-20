@@ -24,7 +24,7 @@ export function duration(duration: number | null): string {
 
 /* Formatter for METHOD */
 
-const METHOD_COLOR_LUT = {
+const METHOD_COLOR_LUT: Record<string, Formatter> = {
 	GET: pc.green,
 	POST: pc.blue,
 	PUT: pc.yellow,
@@ -32,7 +32,7 @@ const METHOD_COLOR_LUT = {
 	PATCH: pc.magenta,
 	OPTIONS: pc.cyan,
 	HEAD: pc.gray,
-} satisfies Record<string, Formatter>;
+};
 
 export function method(method: string): string {
 	const colorer = METHOD_COLOR_LUT[method.toUpperCase()];
@@ -41,7 +41,7 @@ export function method(method: string): string {
 
 /* Formatter for STATUS */
 
-const STATUS_COLOR_LUT = {
+const STATUS_COLOR_LUT: Record<number, Formatter> = {
 	200: pc.green,
 	201: pc.blue,
 	204: pc.yellow,
@@ -50,7 +50,7 @@ const STATUS_COLOR_LUT = {
 	403: pc.cyan,
 	404: pc.gray,
 	500: pc.gray,
-} satisfies Record<number, Formatter>;
+};
 
 export function status(status: string | number | undefined): string {
 	if (status === undefined) return "";
