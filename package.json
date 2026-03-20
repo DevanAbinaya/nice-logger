@@ -1,6 +1,6 @@
 {
-  "name": "@tqman/nice-logger",
-  "version": "1.1.1",
+  "name": "@factiven/nice-logger",
+  "version": "1.1.2",
   "description": "Logger for Elysia",
   "author": {
     "name": "tanishqmanuja",
@@ -40,7 +40,8 @@
     "build": "bun run scripts/build.ts",
     "prepare": "bun run build",
     "bump": "bun run scripts/bump.ts",
-    "release": "bun run scripts/release.ts"
+    "release": "bun run scripts/release.ts",
+    "prepublishOnly": "bun run build"
   },
   "peerDependencies": {
     "elysia": ">=1.2.0"

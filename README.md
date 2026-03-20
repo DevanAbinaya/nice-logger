@@ -1,56 +1,108 @@
-![Logo](https://raw.github.com/tanishqmanuja/static/main/banners/nice-logger.webp?maxAge=2592000)
+# nice-logger
 
-<p align=center>"Not the nicest, but a pretty nice and sweet logger for <a href="https://elysiajs.com">Elysia</a>."</p>
+A minimal logger middleware for Elysia with global logger functions you can use anywhere.
 
-<div align=center>
+Forked from the original project by Tanishq Manuja:  
+https://github.com/tanishqmanuja/nice-logger
 
-[![Downloads][downloads-shield]][npm-url]
-[![NPM Version][npm-shield]][npm-url]
-![GitHub Workflow Status][ci-status-shield]
-[![License][license-shield]][license-url]
-
-</div>
-
-<!-- Shields -->
-
-[ci-status-shield]: https://img.shields.io/github/actions/workflow/status/tanishqmanuja/nice-logger/release.yaml?branch=main&style=for-the-badge&label=ci
-[downloads-shield]: https://img.shields.io/npm/dm/%40tqman%2Fnice-logger?style=for-the-badge
-[license-shield]: https://img.shields.io/github/license/tanishqmanuja/apkmirror-downloader?style=for-the-badge
-[license-url]: https://github.com/tanishqmanuja/nice-logger/blob/main/LICENSE.md
-[npm-shield]: https://img.shields.io/npm/v/@tqman/nice-logger?style=for-the-badge
-[npm-url]: https://www.npmjs.com/package/@tqman/nice-logger
-
-## 🚀 Installation
+## Installation
 
 ```bash
-bun add @tqman/nice-logger
+bun add @factiven/nice-logger
 ```
 
-## 📃 Usage
+## Elysia middleware usage
 
 ```ts
 import Elysia from "elysia";
-import { logger } from "@tqman/nice-logger";
+import { logger } from "@factiven/nice-logger";
 
-const app = new Elysia()
-  .use(logger({
-    mode: "live", // "live" or "combined" (default: "combined")
-    withTimestamp: true, // optional (default: false)
-  }))
-  .get("/", "Hello via Elysia!")
+new Elysia()
+  .use(
+    logger({
+      enabled: true, // turn middleware logging on/off
+      mode: "combined", // "combined" (single line after response) or "live" (request + response lines)
+      withTimestamp: true, // prepend timestamp to each middleware log line
+      withBanner: {
+        Server: "http://localhost:3000", // key/value lines shown on startup
+        Docs: "http://localhost:3000/docs", // additional startup info
+      }, // false to disable banner, true for default banner, function/object for custom banner
+    }),
+  )
+  .get("/", "ok")
   .listen(3000);
 ```
 
-## 🍰 Showcase
+## Global logger usage (anywhere in your code)
 
-Some awesome projects to checkout !!!
+```ts
+import {
+  configureGlobalLogger,
+  info,
+  debug,
+  warn,
+  error,
+} from "@factiven/nice-logger";
 
-- [**todos-react-elysia**](https://github.com/tanishqmanuja/todos-react-elysia) - A simple starter fullstack todos app built with [React](https://react.dev) and [Elysia](https://elysiajs.com) that uses `@tqman/nice-logger`.
+configureGlobalLogger({
+  enabled: true, // turn global logging on/off
+  withTimestamp: true, // prepend timestamp to global log lines
+  pretty: false, // true => pretty-printed JSON objects, false => compact JSON
+});
 
-- [**elysia-logger**](https://github.com/bogeychan/elysia-logger) - An [Elysia](https://elysiajs.com) logger plugin to use with [pino](https://github.com/pinojs/pino) library, developed by [@bogeychan](https://github.com/bogeychan).
+info("Server started");
+debug("Feature flags", { ai: true, cache: "redis" });
+warn("Rate limit threshold", { userId: "u_123" });
+error("Unhandled exception", new Error("Oops"));
+```
 
-- [**logixlysia**](https://github.com/PunGrumpy/logixlysia) - Another great logger plugin for [Elysia](https://elysiajs.com) developed by [@PunGrumpy](https://github.com/PunGrumpy).
+Example output:
 
-## 🍀 Show your Support
+```txt
+[3/20/2026, 4:12:13 PM] INFO Server started
+[3/20/2026, 4:12:13 PM] DEBUG {"ai":true,"cache":"redis"}
+[3/20/2026, 4:12:13 PM] WARN Rate limit threshold {"userId":"u_123"}
+[3/20/2026, 4:12:13 PM] ERROR {"name":"Error","message":"Oops","stack":"..."}
+```
 
-Give a ⭐️ if this project helped you!
+## Full options reference (examples)
+
+### `logger(options)`
+
+```ts
+logger({
+  enabled: process.env.NODE_ENV !== "production", // disable middleware logs in production by default
+  mode: "combined", // "combined" | "live"
+  withTimestamp: false, // boolean | (() => string)
+  withBanner: false, // boolean | (() => void) | Record<string, string | ((ctx) => string | undefined)>
+});
+```
+
+### `configureGlobalLogger(options)`
+
+```ts
+configureGlobalLogger({
+  enabled: process.env.NODE_ENV !== "production", // disable global logs in production by default
+  withTimestamp: false, // boolean | (() => string)
+  pretty: false, // pretty-print objects/errors
+});
+```
+
+## Exported API
+
+```ts
+import {
+  logger, // Elysia middleware plugin
+  configureGlobalLogger, // update global logger behavior
+  getGlobalLoggerConfig, // read current global logger config
+  resetGlobalLoggerConfig, // reset global logger config to defaults
+  info, // global INFO logger
+  debug, // global DEBUG logger
+  warn, // global WARN logger
+  error, // global ERROR logger
+} from "@factiven/nice-logger";
+```
+
+## License
+
+MIT
