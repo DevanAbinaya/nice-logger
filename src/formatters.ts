@@ -5,58 +5,58 @@ import type { Formatter } from "picocolors/types";
 
 const UNITS = ["µs", "ms", "s"] as const;
 const DURATION_FORMATTER = Intl.NumberFormat(undefined, {
-	maximumFractionDigits: 2,
+  maximumFractionDigits: 2,
 });
 
 export function duration(duration: number | null): string {
-	if (duration == null) return "-/-";
+  if (duration == null) return "-/-";
 
-	let value = duration;
-	let unitIndex = 0;
+  let value = duration;
+  let unitIndex = 0;
 
-	while (value >= 1000 && unitIndex < UNITS.length - 1) {
-		value /= 1000;
-		unitIndex++;
-	}
+  while (value >= 1000 && unitIndex < UNITS.length - 1) {
+    value /= 1000;
+    unitIndex++;
+  }
 
-	return `${DURATION_FORMATTER.format(value)}${UNITS[unitIndex]}`;
+  return `${DURATION_FORMATTER.format(value)}${UNITS[unitIndex]}`;
 }
 
 /* Formatter for METHOD */
 
 const METHOD_COLOR_LUT: Record<string, Formatter> = {
-	GET: pc.green,
-	POST: pc.blue,
-	PUT: pc.yellow,
-	DELETE: pc.red,
-	PATCH: pc.magenta,
-	OPTIONS: pc.cyan,
-	HEAD: pc.gray,
+  GET: pc.green,
+  POST: pc.blue,
+  PUT: pc.yellow,
+  DELETE: pc.red,
+  PATCH: pc.magenta,
+  OPTIONS: pc.cyan,
+  HEAD: pc.gray,
 };
 
 export function method(method: string): string {
-	const colorer = METHOD_COLOR_LUT[method.toUpperCase()];
-	return colorer ? colorer(method) : method;
+  const colorer = METHOD_COLOR_LUT[method.toUpperCase()];
+  return colorer ? colorer(method) : method;
 }
 
 /* Formatter for STATUS */
 
 const STATUS_COLOR_LUT: Record<number, Formatter> = {
-	200: pc.green,
-	201: pc.blue,
-	204: pc.yellow,
-	400: pc.red,
-	401: pc.magenta,
-	403: pc.cyan,
-	404: pc.gray,
-	500: pc.gray,
+  200: pc.green,
+  201: pc.blue,
+  204: pc.yellow,
+  400: pc.red,
+  401: pc.magenta,
+  403: pc.cyan,
+  404: pc.gray,
+  500: pc.gray,
 };
 
 export function status(status: string | number | undefined): string {
-	if (status === undefined) return "";
+  if (status === undefined) return "";
 
-	const colorer = STATUS_COLOR_LUT[+status];
-	return colorer ? colorer(String(status)) : String(status);
+  const colorer = STATUS_COLOR_LUT[+status];
+  return colorer ? colorer(String(status)) : String(status);
 }
 
 /* Formatter for LOG LEVEL */
@@ -64,23 +64,23 @@ export function status(status: string | number | undefined): string {
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
 const LEVEL_COLOR_LUT: Record<LogLevel, Formatter> = {
-	debug: pc.magenta,
-	info: pc.cyan,
-	warn: pc.yellow,
-	error: pc.red,
+  debug: pc.magenta,
+  info: pc.cyan,
+  warn: pc.yellow,
+  error: pc.red,
 };
 
 const LEVEL_LABEL_LUT: Record<LogLevel, string> = {
-	debug: "DEBUG",
-	info: "INFO",
-	warn: "WARN",
-	error: "ERROR",
+  debug: "DEBUG",
+  info: "INFO",
+  warn: "WARN",
+  error: "ERROR",
 };
 
 export function level(level: LogLevel): string {
-	const label = LEVEL_LABEL_LUT[level] ?? String(level).toUpperCase();
-	const colorer = LEVEL_COLOR_LUT[level] ?? pc.white;
-	return colorer(label);
+  const label = LEVEL_LABEL_LUT[level] ?? String(level).toUpperCase();
+  const colorer = LEVEL_COLOR_LUT[level] ?? pc.white;
+  return colorer(label);
 }
 
 /* Safe value formatting utilities */
@@ -88,70 +88,70 @@ export function level(level: LogLevel): string {
 type JsonLikeObject = Record<string, unknown>;
 
 function isErrorLike(value: unknown): value is Error {
-	return value instanceof Error;
+  return value instanceof Error;
 }
 
 function serializeError(error: Error): JsonLikeObject {
-	return {
-		name: error.name,
-		message: error.message,
-		stack: error.stack,
-		...(error as unknown as JsonLikeObject),
-	};
+  return {
+    name: error.name,
+    message: error.message,
+    stack: error.stack,
+    ...(error as unknown as JsonLikeObject),
+  };
 }
 
 function createCircularReplacer() {
-	const seen = new WeakSet<object>();
+  const seen = new WeakSet<object>();
 
-	return (_key: string, value: unknown) => {
-		if (typeof value === "bigint") return `${value}n`;
+  return (_key: string, value: unknown) => {
+    if (typeof value === "bigint") return `${value}n`;
 
-		if (isErrorLike(value)) return serializeError(value);
+    if (isErrorLike(value)) return serializeError(value);
 
-		if (typeof value === "object" && value !== null) {
-			if (seen.has(value)) return "[Circular]";
-			seen.add(value);
-		}
+    if (typeof value === "object" && value !== null) {
+      if (seen.has(value)) return "[Circular]";
+      seen.add(value);
+    }
 
-		return value;
-	};
+    return value;
+  };
 }
 
 export function safeStringify(
-	value: unknown,
-	space = 0,
-	fallback = "[Unserializable]",
+  value: unknown,
+  space = 0,
+  fallback = "[Unserializable]",
 ): string {
-	try {
-		return JSON.stringify(value, createCircularReplacer(), space);
-	} catch {
-		try {
-			return String(value);
-		} catch {
-			return fallback;
-		}
-	}
+  try {
+    return JSON.stringify(value, createCircularReplacer(), space);
+  } catch {
+    try {
+      return String(value);
+    } catch {
+      return fallback;
+    }
+  }
 }
 
 export function formatValue(
-	value: unknown,
-	options: { pretty?: boolean } = {},
+  value: unknown,
+  options: { pretty?: boolean } = {},
 ): string {
-	if (typeof value === "string") return value;
-	if (
-		typeof value === "number" ||
-		typeof value === "boolean" ||
-		value == null
-	) {
-		return String(value);
-	}
+  if (typeof value === "string") return value;
+  if (
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    value == null
+  ) {
+    return String(value);
+  }
 
-	return safeStringify(value, options.pretty ? 2 : 0);
+  return safeStringify(value, options.pretty ? 2 : 0);
 }
 
 export function formatValues(
-	values: unknown[],
-	options: { pretty?: boolean } = {},
+  values: unknown[],
+  options: { pretty?: boolean } = {},
 ): string {
-	return values.map((value) => formatValue(value, options)).join(" ");
+  return values.map(value => formatValue(value, options)).join(" ");
 }

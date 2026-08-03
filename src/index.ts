@@ -3,7 +3,8 @@ import pc from "picocolors";
 
 import * as fmt from "./formatters";
 
-const REQUEST_START_TIME_KEY = "@tqman/nice-logger/request-start-time";
+type RequestState = { start: bigint; errored: boolean };
+const requestStates = new WeakMap<Request, RequestState>();
 
 type GlobalLogLevel = "info" | "debug" | "warn" | "error";
 type LogArgument = unknown;
@@ -129,7 +130,7 @@ export const logger = (options: LoggerOptions = {}) => {
   const ts = options.withTimestamp;
 
   app
-    .onStart(ctx => {
+    .setup(ctx => {
       if (!options.withBanner) return;
 
       if (typeof options.withBanner === "function") {
@@ -155,11 +156,11 @@ export const logger = (options: LoggerOptions = {}) => {
         `${pc.green(" ➜ ")} ${pc.bold("Server")}: ${pc.cyan(String(ctx.server?.url))}\n`,
       ]);
     })
-    .onRequest(ctx => {
-      ctx.store = {
-        ...ctx.store,
-        [REQUEST_START_TIME_KEY]: process.hrtime.bigint(),
-      };
+    .request(ctx => {
+      requestStates.set(ctx.request, {
+        start: process.hrtime.bigint(),
+        errored: false,
+      });
 
       if (mode !== "live") return;
 
@@ -172,14 +173,13 @@ export const logger = (options: LoggerOptions = {}) => {
         url.pathname,
       ]);
     })
-    .onAfterResponse(({ request, set, response, store }) => {
-      if (response instanceof Error) return;
+    .afterResponse(({ request, set, responseValue }) => {
+      const state = requestStates.get(request);
+      if (!state || state.errored) return;
+      if (responseValue instanceof Error) return;
 
       const url = new URL(request.url);
-      const duration =
-        Number(
-          process.hrtime.bigint() - (store as any)[REQUEST_START_TIME_KEY],
-        ) / 1000;
+      const duration = Number(process.hrtime.bigint() - state.start) / 1000;
 
       const sign = mode === "combined" ? pc.green("✓") : pc.green("<---");
 
@@ -192,14 +192,15 @@ export const logger = (options: LoggerOptions = {}) => {
         pc.dim(`[${fmt.duration(duration)}]`),
       ]);
     })
-    .onError(({ request, error, store }) => {
+    .error(({ request, error }) => {
+      const state = requestStates.get(request);
+      if (state) state.errored = true;
+
       const url = new URL(request.url);
-      const duration = (store as any)[REQUEST_START_TIME_KEY]
-        ? Number(
-            process.hrtime.bigint() - (store as any)[REQUEST_START_TIME_KEY],
-          ) / 1000
+      const duration = state
+        ? Number(process.hrtime.bigint() - state.start) / 1000
         : null;
-      const status = "status" in error ? error.status : 500;
+      const status = "status" in error ? (error.status as number) : 500;
 
       const sign = mode === "combined" ? pc.red("✗") : pc.red("<-x-");
 

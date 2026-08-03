@@ -1,5 +1,6 @@
-import { logger } from "@tqman/nice-logger";
 import Elysia from "elysia";
+
+import { logger } from "../src/index";
 
 function wait(time: number) {
   return new Promise(resolve => {

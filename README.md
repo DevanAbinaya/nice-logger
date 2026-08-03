@@ -5,6 +5,19 @@ A minimal logger middleware for Elysia with global logger functions you can use 
 Forked from the original project by Tanishq Manuja:  
 https://github.com/tanishqmanuja/nice-logger
 
+## Elysia v2 (beta) support
+
+This branch (`beta`) targets **Elysia v2 (beta)** (`elysia@next`).
+
+- `main` → Elysia v1 (`elysia >= 1.2.0`)
+- `beta` → Elysia v2 (`elysia >= 2.0.0-beta.1`)
+
+Install directly from GitHub:
+
+```bash
+bun add "elysia@next" "@factiven/nice-logger@github:DevanAbinaya/nice-logger#beta"
+```
+
 ## Installation
 
 ```bash
@@ -14,8 +27,8 @@ bun add @factiven/nice-logger
 ## Elysia middleware usage
 
 ```ts
-import Elysia from "elysia";
 import { logger } from "@factiven/nice-logger";
+import Elysia from "elysia";
 
 new Elysia()
   .use(
@@ -38,10 +51,10 @@ new Elysia()
 ```ts
 import {
   configureGlobalLogger,
-  info,
   debug,
-  warn,
   error,
+  info,
+  warn,
 } from "@factiven/nice-logger";
 
 configureGlobalLogger({
@@ -92,14 +105,14 @@ configureGlobalLogger({
 
 ```ts
 import {
-  logger, // Elysia middleware plugin
   configureGlobalLogger, // update global logger behavior
-  getGlobalLoggerConfig, // read current global logger config
-  resetGlobalLoggerConfig, // reset global logger config to defaults
-  info, // global INFO logger
   debug, // global DEBUG logger
-  warn, // global WARN logger
   error, // global ERROR logger
+  getGlobalLoggerConfig, // read current global logger config
+  info, // global INFO logger
+  logger, // Elysia middleware plugin
+  resetGlobalLoggerConfig, // reset global logger config to defaults
+  warn, // global WARN logger
 } from "@factiven/nice-logger";
 ```
 

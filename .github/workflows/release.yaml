@@ -56,7 +56,7 @@ jobs:
         run: bun run build
 
       - name: Publish
-        run: npm publish --provenance --access public 
+        run: npm publish --tag beta --provenance --access public 
 
       - name: Commit
         run: git push --follow-tags
