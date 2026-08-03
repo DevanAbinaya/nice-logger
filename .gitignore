@@ -1,5 +1,6 @@
 # Dependencies
 node_modules
 
-# Build
-dist
+# Build output is committed so that git installs
+# (e.g. github:DevanAbinaya/nice-logger#beta) work without running
+# the package `prepare` build script on the consumer side.
